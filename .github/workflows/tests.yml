@@ -25,7 +25,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
       - name: Compile Python modules
         run: python -m compileall -q .
       - name: Run unit tests
