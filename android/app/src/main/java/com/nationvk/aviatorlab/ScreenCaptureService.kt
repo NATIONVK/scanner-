@@ -53,7 +53,8 @@ class ScreenCaptureService : Service() {
     private fun createNotification() {
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(NotificationChannel(CHANNEL, "Research screen capture", NotificationManager.IMPORTANCE_LOW))
-        val notification = Notification.Builder(this, CHANNEL)
+        val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, CHANNEL) else Notification.Builder(this).setPriority(Notification.PRIORITY_LOW)
+        val notification = builder
             .setContentTitle("Aviator Research Lab")
             .setContentText("Screen OCR is active. Tap Stop in the app to end capture.")
             .setSmallIcon(android.R.drawable.ic_menu_view)
