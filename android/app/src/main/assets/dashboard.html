@@ -24,13 +24,17 @@ footer{color:var(--muted);font-size:12px;padding:18px 0}
 <div class="card"><h2>Multiplier distribution</h2><canvas id="chart" width="1000" height="260"></canvas><div class="muted">Histogram bins are descriptive; they do not predict the next round.</div></div>
 <div class="card"><h2>Threshold frequency</h2><div id="thresholds"></div></div>
 <div class="card"><h2>Live research diagnostics</h2><div id="liveResearch" class="note">Waiting for OCR observations. A larger sample improves descriptive stability, not next-round predictability.</div></div>
+<div class="card"><h2>Round review & correction</h2><div class="controls"><input id="manualValue" type="number" min="1" step="0.01" placeholder="Enter verified multiplier (e.g. 2.35)"><button id="addManual">Add verified round</button><button id="undoLast">Undo last</button><button id="clearHistory">Clear local history</button></div><p class="muted">OCR values should be checked against the visible game result. Manual entries are labelled in this device's local review log.</p><div id="recentRounds"></div></div>
 <div class="card"><h2>Research interpretation</h2><div id="interpretation" class="note">Load data to see the analysis.</div></div>
 <footer>NATIONVK · YEASIEN AHMED · No betting signals, auto-betting, or guaranteed prediction. Synthetic demo values are not real platform results.</footer>
 </main>
 <script>
-let values=[],report=null;
+let values=[],report=null,roundSources=[];
+try{roundSources=JSON.parse(localStorage.getItem("aviator_sources")||"[]")}catch(_){roundSources=[]}
+function persist(){try{localStorage.setItem("aviator_observations",JSON.stringify(values));localStorage.setItem("aviator_sources",JSON.stringify(roundSources))}catch(_){}}
+function renderRecent(){const start=Math.max(0,values.length-12);$("recentRounds").innerHTML=values.slice(start).map((v,i)=>"<div class='muted'>#"+(start+i+1)+" · "+Number(v).toFixed(2)+"x · "+(roundSources[start+i]||"legacy")+"</div>").reverse().join("")||"<span class='muted'>No rounds captured yet.</span>";}
 try{values=JSON.parse(localStorage.getItem("aviator_observations")||"[]").filter(x=>Number.isFinite(x)&&x>=1).slice(-5000)}catch(_){values=[]}
-window.onCapturedMultiplier=function(v){if(Number.isFinite(v)&&v>=1){values.push(v);if(values.length>5000)values.shift();try{localStorage.setItem("aviator_observations",JSON.stringify(values))}catch(_){}analyze("Live OCR captured "+values.length+" observations");}};
+window.onCapturedMultiplier=function(v){if(Number.isFinite(v)&&v>=1&&v<=1000000){values.push(v);roundSources.push("screen_ocr");if(values.length>5000){values.shift();roundSources.shift()}persist();analyze("Live OCR captured "+values.length+" observations");}};
 const $=id=>document.getElementById(id);
 function demo(){let seed=42;const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};values=Array.from({length:500},()=>Math.max(1,Math.round(.97/(1-rand())*100)/100));analyze("Loaded 500 synthetic demo rounds");}
 function analyze(message){
@@ -49,11 +53,14 @@ function analyze(message){
  $("liveResearch").textContent="Rolling 50 mean: "+rmean.toFixed(3)+"x · Recent count: "+recent.length+" · ≥2x runs observed: "+runs+" · Lag-1 correlation: "+(lag1===null?"not available":lag1.toFixed(3))+" · Historical P10–P90: "+p10.toFixed(2)+"x–"+p90.toFixed(2)+"x. These are historical diagnostics, not a next-round prediction.";
  report.rolling_50_mean=rmean;report.runs_at_2x=runs;report.lag1_correlation_exploratory=lag1;report.historical_p10=p10;report.historical_p90=p90;
  $("interpretation").textContent="This dataset contains "+n+" valid values. Rates and percentile bands describe only observations already captured. No model can reliably infer an individual next crash point from this history. Verify OCR selection, round boundaries, timestamps, and source integrity before research conclusions.";
- $("status").textContent=message;drawChart(s);
+ $("status").textContent=message;renderRecent();drawChart(s);
 }
 function pearson(a,b){if(a.length!==b.length||a.length<2)return null;const ma=a.reduce((x,y)=>x+y,0)/a.length,mb=b.reduce((x,y)=>x+y,0)/b.length;let xy=0,xx=0,yy=0;for(let i=0;i<a.length;i++){const x=a[i]-ma,y=b[i]-mb;xy+=x*y;xx+=x*x;yy+=y*y}return xx&&yy?xy/Math.sqrt(xx*yy):null}
-function drawChart(sorted){const c=$("chart"),ctx=c.getContext("2d"),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);let max=Math.min(sorted[sorted.length-1],20),bins=20,counts=Array(bins).fill(0);sorted.forEach(v=>{let i=Math.min(bins-1,Math.floor(Math.min(v,max)/max*bins));counts[i]++});let peak=Math.max(...counts,1);ctx.strokeStyle="#314866";ctx.fillStyle="#58b8ff";ctx.font="13px system-ui";for(let i=0;i<bins;i++){let bw=w/bins-5,bh=counts[i]/peak*(h-35),x=i*w/bins+2;ctx.fillRect(x,h-bh-22,bw,bh);if(i%2===0){ctx.fillStyle="#9aabc6";ctx.fillText((i*max/bins).toFixed(1),x,h-5);ctx.fillStyle="#58b8ff"}}}
-$("demo").onclick=demo;
+function drawChart(sorted){const c=$("chart"),ctx=c.getContext("2d"),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);if(!sorted.length){ctx.fillStyle="#9aabc6";ctx.fillText("No observations",20,30);return}let max=Math.max(1,Math.min(sorted[sorted.length-1],20)),bins=20,counts=Array(bins).fill(0);sorted.forEach(v=>{let i=Math.min(bins-1,Math.floor(Math.min(v,max)/max*bins));counts[i]++});let peak=Math.max(...counts,1);ctx.strokeStyle="#314866";ctx.fillStyle="#58b8ff";ctx.font="13px system-ui";for(let i=0;i<bins;i++){let bw=w/bins-5,bh=counts[i]/peak*(h-35),x=i*w/bins+2;ctx.fillRect(x,h-bh-22,bw,bh);if(i%2===0){ctx.fillStyle="#9aabc6";ctx.fillText((i*max/bins).toFixed(1),x,h-5);ctx.fillStyle="#58b8ff"}}}
+$("demo").onclick=()=>{values=[];roundSources=[];demo();roundSources=values.map(()=>"synthetic_demo");persist();renderRecent();};
+$("addManual").onclick=()=>{const v=Number($("manualValue").value);if(!Number.isFinite(v)||v<1||v>1000000){$("status").textContent="Enter a valid multiplier from 1 to 1,000,000";return}values.push(v);roundSources.push("manual_verified");if(values.length>5000){values.shift();roundSources.shift()}$("manualValue").value="";persist();analyze("Manually added verified round");};
+$("undoLast").onclick=()=>{if(values.length){values.pop();roundSources.pop();persist();analyze("Removed last observation")}else $("status").textContent="History is already empty"};
+$("clearHistory").onclick=()=>{if(!confirm("Clear all locally saved observations on this device?"))return;values=[];roundSources=[];persist();report=null;$("metrics").innerHTML="";$("thresholds").innerHTML="";$("liveResearch").textContent="History cleared. Start capture or add a verified value.";$("interpretation").textContent="No observations available.";$("status").textContent="Local history cleared";renderRecent();drawChart([])};
 $("file").onchange=async e=>{const f=e.target.files[0];if(!f)return;const text=await f.text(),lines=text.trim().split(/\r?\n/),headers=lines.shift().split(",").map(x=>x.trim().toLowerCase()),idx=headers.indexOf("multiplier");if(idx<0){$("status").textContent="CSV needs multiplier column";return}values=lines.map(line=>line.split(",")[idx]);analyze("Imported "+f.name)};
 $("download").onclick=()=>{if(!report)return;const blob=new Blob([JSON.stringify(report,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="aviator-research-report.json";a.click();URL.revokeObjectURL(a.href)};
 demo();
