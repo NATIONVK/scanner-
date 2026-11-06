@@ -48,8 +48,11 @@ class MainActivity : Activity() {
         setContentView(layout)
         val filter = IntentFilter(ScreenCaptureService.ACTION_MULTIPLIER)
         if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(receiver, filter, RECEIVER_NOT_EXPORTED)
-        else @Suppress("DEPRECATION") registerReceiver(receiver, filter)
+        else registerLegacyReceiver(filter)
     }
+
+    @Suppress("DEPRECATION")
+    private fun registerLegacyReceiver(filter: IntentFilter) { registerReceiver(receiver, filter) }
 
     @Deprecated("Deprecated by Android; retained for broad device compatibility")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
