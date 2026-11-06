@@ -50,3 +50,11 @@ This is an educational statistics project. No real-money betting integration, au
 
 ## Author
 NATIONVK — YEASIEN AHMED
+
+
+## Android APK (experimental)
+A native Android project is available in [android/](android/). It packages the research dashboard and includes an opt-in MediaProjection screen-capture service with on-device ML Kit OCR. Android requires the user to approve every capture session and displays a persistent notification while capture is active.
+
+To build a debug APK, open the **Actions** tab and run **Build Android APK**, or push a change under `android/`. Download the `aviator-research-lab-debug-apk` artifact from the completed workflow run. This is an unsigned debug build, not a Play Store release.
+
+**OCR limitations:** OCR may misread values and cannot reliably distinguish the current multiplier from historical values visible on screen. Review captured observations before analysis. Screen OCR does not reveal server seeds or provide a reliable next-round prediction.
