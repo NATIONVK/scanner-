@@ -1,18 +1,51 @@
 name: Research Lab Tests
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
+    name: Python ${{ matrix.python-version }} tests
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+      - name: Compile Python modules
+        run: python -m compileall -q .
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
       - name: Run demo smoke test
         run: python app.py demo --rounds 50 --seed 42 --csv /tmp/demo.csv --json /tmp/report.json
+      - name: Verify demo outputs
+        run: |
+          python - <<'PY'
+          import csv, json
+          with open('/tmp/demo.csv', newline='', encoding='utf-8') as f:
+              rows = list(csv.DictReader(f))
+          with open('/tmp/report.json', encoding='utf-8') as f:
+              report = json.load(f)
+          assert len(rows) == 50, len(rows)
+          assert report['sample_size'] == 50, report
+          assert report['data_type'] == 'synthetic', report
+          print('Demo CSV and JSON verified')
+          PY
