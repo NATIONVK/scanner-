@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NATIONVK Aviator Research Lab</title>
+<style>
+:root{color-scheme:dark;--bg:#090d18;--panel:#111a2b;--line:#26364f;--text:#eaf1ff;--muted:#9aabc6;--accent:#58b8ff;--good:#54d6a0}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#14294a 0,transparent 34%),var(--bg);color:var(--text);font:15px system-ui,Arial,sans-serif}
+main{max-width:1100px;margin:auto;padding:24px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{margin:0;font-size:clamp(24px,5vw,38px)}.sub{color:var(--muted);margin:8px 0 22px}
+.pill{border:1px solid #275d51;color:var(--good);border-radius:999px;padding:6px 11px;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.card{background:linear-gradient(145deg,#142139,var(--panel));border:1px solid var(--line);border-radius:15px;padding:16px;margin-bottom:14px}
+.metric small,.muted{color:var(--muted)}.metric strong{display:block;font-size:27px;margin-top:6px}
+button,.file{background:#17365a;color:var(--text);border:1px solid #2e5c8b;border-radius:9px;padding:10px 13px;cursor:pointer}
+input{max-width:100%;color:var(--text)}.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:9px;border-bottom:1px solid var(--line)}th{color:var(--muted)}
+canvas{width:100%;height:250px;display:block}.note{color:#c4d4ed;background:#18263a;border-left:3px solid var(--accent);padding:12px;border-radius:7px}
+footer{color:var(--muted);font-size:12px;padding:18px 0}
+</style></head>
+<body><main>
+<div class="top"><div><h1>✈ NATIONVK AVIATOR RESEARCH LAB</h1><div class="sub">Statistical exploration · Probability · Data integrity</div></div><span class="pill">EDUCATIONAL RESEARCH ONLY</span></div>
+<div class="card"><div class="controls"><button id="demo">Load demo dataset</button><label class="file">Import CSV <input id="file" type="file" accept=".csv,text/csv" hidden></label><button id="download">Export report JSON</button><span id="status" class="muted">Demo data ready</span></div><p class="muted">CSV must include a <b>multiplier</b> column. Imported data is analyzed locally in this browser.</p></div>
+<div class="grid" id="metrics"></div>
+<div class="card"><h2>Multiplier distribution</h2><canvas id="chart" width="1000" height="260"></canvas><div class="muted">Histogram bins are descriptive; they do not predict the next round.</div></div>
+<div class="card"><h2>Threshold frequency</h2><div id="thresholds"></div></div>
+<div class="card"><h2>Research interpretation</h2><div id="interpretation" class="note">Load data to see the analysis.</div></div>
+<footer>NATIONVK · YEASIEN AHMED · No betting signals, auto-betting, or guaranteed prediction. Synthetic demo values are not real platform results.</footer>
+</main>
+<script>
+let values=[],report=null;
+window.onCapturedMultiplier=function(v){if(Number.isFinite(v)&&v>=1){values.push(v);if(values.length>5000)values.shift();analyze("Live OCR captured "+values.length+" observations");}};
+const $=id=>document.getElementById(id);
+function demo(){let seed=42;const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};values=Array.from({length:500},()=>Math.max(1,Math.round(.97/(1-rand())*100)/100));analyze("Loaded 500 synthetic demo rounds");}
+function analyze(message){
+ values=values.map(Number).filter(x=>Number.isFinite(x)&&x>=1);
+ if(!values.length){$("status").textContent="No valid multiplier values found";return}
+ const s=[...values].sort((a,b)=>a-b),n=s.length,mean=values.reduce((a,b)=>a+b,0)/n,median=n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2;
+ const variance=values.reduce((a,b)=>a+(b-mean)**2,0)/n;
+ const q=p=>s[Math.min(n-1,Math.floor((n-1)*p))];
+ report={sample_size:n,mean,median,minimum:s[0],maximum:s[n-1],population_sd:Math.sqrt(variance),thresholds:{}};
+ $("metrics").innerHTML=[["Sample size",n],["Mean",mean.toFixed(3)+"x"],["Median",median.toFixed(3)+"x"],["Range",s[0].toFixed(2)+"x – "+s[n-1].toFixed(2)+"x"],["Q25 / Q75",q(.25).toFixed(2)+"x / "+q(.75).toFixed(2)+"x"],["Population SD",Math.sqrt(variance).toFixed(3)]].map(x=>'<div class="card metric"><small>'+x[0]+'</small><strong>'+x[1]+'</strong></div>').join("");
+ const ts=[1.5,2,5,10];$("thresholds").innerHTML="<table><thead><tr><th>Threshold</th><th>Hits</th><th>Observed rate</th></tr></thead><tbody>"+ts.map(t=>{let hits=values.filter(x=>x>=t).length,rate=hits/n;report.thresholds[t+"x"]={hits,trials:n,empirical_rate:rate};return "<tr><td>≥ "+t+"x</td><td>"+hits+"</td><td>"+(rate*100).toFixed(2)+"%</td></tr>"}).join("")+"</tbody></table>";
+ $("interpretation").textContent="This dataset contains "+n+" valid values. The displayed rates describe only these observations. They do not establish the probability of the next round or prove that rounds are independent. Verify source, timestamps, and protocol before drawing research conclusions.";
+ $("status").textContent=message;drawChart(s);
+}
+function drawChart(sorted){const c=$("chart"),ctx=c.getContext("2d"),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);let max=Math.min(sorted[sorted.length-1],20),bins=20,counts=Array(bins).fill(0);sorted.forEach(v=>{let i=Math.min(bins-1,Math.floor(Math.min(v,max)/max*bins));counts[i]++});let peak=Math.max(...counts,1);ctx.strokeStyle="#314866";ctx.fillStyle="#58b8ff";ctx.font="13px system-ui";for(let i=0;i<bins;i++){let bw=w/bins-5,bh=counts[i]/peak*(h-35),x=i*w/bins+2;ctx.fillRect(x,h-bh-22,bw,bh);if(i%2===0){ctx.fillStyle="#9aabc6";ctx.fillText((i*max/bins).toFixed(1),x,h-5);ctx.fillStyle="#58b8ff"}}}
+$("demo").onclick=demo;
+$("file").onchange=async e=>{const f=e.target.files[0];if(!f)return;const text=await f.text(),lines=text.trim().split(/\r?\n/),headers=lines.shift().split(",").map(x=>x.trim().toLowerCase()),idx=headers.indexOf("multiplier");if(idx<0){$("status").textContent="CSV needs multiplier column";return}values=lines.map(line=>line.split(",")[idx]);analyze("Imported "+f.name)};
+$("download").onclick=()=>{if(!report)return;const blob=new Blob([JSON.stringify(report,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="aviator-research-report.json";a.click();URL.revokeObjectURL(a.href)};
+demo();
+</script></body></html>
