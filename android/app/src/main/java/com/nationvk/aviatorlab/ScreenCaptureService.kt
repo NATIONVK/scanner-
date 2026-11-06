@@ -12,7 +12,6 @@ import android.media.projection.MediaProjectionManager
 import android.os.*
 import android.util.DisplayMetrics
 import android.view.WindowManager
-import androidx.annotation.RequiresApi
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -41,12 +40,15 @@ class ScreenCaptureService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent == null) { stopSelf(); return START_NOT_STICKY }
         val code = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
-        val data: Intent? = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java) else @Suppress("DEPRECATION") intent.getParcelableExtra(EXTRA_RESULT_DATA)
+        val data: Intent? = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java) else legacyResultData(intent)
         if (code != Activity.RESULT_OK || data == null) { stopSelf(); return START_NOT_STICKY }
         createNotification()
         startProjection(code, data)
         return START_NOT_STICKY
     }
+
+    @Suppress("DEPRECATION")
+    private fun legacyResultData(intent: Intent): Intent? = intent.getParcelableExtra(EXTRA_RESULT_DATA)
 
     private fun createNotification() {
         val manager = getSystemService(NotificationManager::class.java)
