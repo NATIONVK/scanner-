@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.log
+demo_report.json
+synthetic_rounds.csv
+.pytest_cache/
