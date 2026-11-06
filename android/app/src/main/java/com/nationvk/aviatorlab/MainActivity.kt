@@ -43,7 +43,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             addView(start, LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
             addView(stop, LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-            addView(web, LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
+            addView(web, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         }
         setContentView(layout)
         val filter = IntentFilter(ScreenCaptureService.ACTION_MULTIPLIER)
