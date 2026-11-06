@@ -10,10 +10,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: research-tests-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   test:
     name: Python ${{ matrix.python-version }} tests
