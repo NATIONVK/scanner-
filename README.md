@@ -15,7 +15,7 @@ A statistics-first educational research toolkit for studying crash-game multipli
 - Python 3.9+
 - No third-party packages required.
 
-## Run on Android (Pydroid 3 / Termux)
+## Browser dashboard\nOpen `dashboard.html` directly in Chrome or another browser. It includes a synthetic demo dataset, CSV import, threshold-frequency analysis, a multiplier histogram, and JSON export. No server or external JavaScript library is needed.\n\n## Run on Android (Pydroid 3 / Termux)
 1. Download or clone this repository.
 2. Open its folder in Pydroid 3 or Termux.
 3. Run:
