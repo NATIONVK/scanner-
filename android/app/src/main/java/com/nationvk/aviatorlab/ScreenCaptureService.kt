@@ -33,6 +33,8 @@ class ScreenCaptureService : Service() {
     private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
     private val busy = AtomicBoolean(false)
     private var lastValue = ""
+    private var pendingValue = ""
+    private var pendingCount = 0
     private var lastScan = 0L
 
     override fun onBind(intent: Intent?) = null
@@ -103,15 +105,40 @@ class ScreenCaptureService : Service() {
             image.close()
             recognizer.process(InputImage.fromBitmap(bitmap, 0))
                 .addOnSuccessListener { result ->
-                    val matcher = Pattern.compile("(?i)([0-9]{1,6}(?:[.,][0-9]{1,4})?)\\s*[x×]").matcher(result.text)
+                    // Prefer a large, central multiplier line over small historical values.
+                    val pattern = Pattern.compile("(?i)([0-9]{1,6}(?:[.,][0-9]{1,4})?)\\s*[x×]")
                     var candidate: String? = null
-                    while (matcher.find()) candidate = matcher.group(1)?.replace(',', '.')
-                    if (candidate != null && candidate != lastValue) {
-                        val value = candidate.toFloatOrNull()
-                        if (value != null && value >= 1f) {
+                    var bestScore = -1f
+                    for (block in result.textBlocks) {
+                        for (line in block.lines) {
+                            val matcher = pattern.matcher(line.text)
+                            if (!matcher.find()) continue
+                            val raw = matcher.group(1)?.replace(',', '.') ?: continue
+                            val bounds = line.boundingBox
+                            val height = (bounds?.height() ?: 0).toFloat()
+                            val centerPenalty = if (bounds == null) 1f else {
+                                val dx = kotlin.math.abs(bounds.centerX() - image.width / 2f) / (image.width / 2f)
+                                val dy = kotlin.math.abs(bounds.centerY() - image.height / 2f) / (image.height / 2f)
+                                1f - (0.35f * dx + 0.25f * dy).coerceAtMost(0.6f)
+                            }
+                            val score = height * centerPenalty
+                            if (score > bestScore) { bestScore = score; candidate = raw }
+                        }
+                    }
+                    val value = candidate?.toFloatOrNull()
+                    if (candidate != null && value != null && value >= 1f) {
+                        if (candidate == pendingValue) pendingCount++ else {
+                            pendingValue = candidate
+                            pendingCount = 1
+                        }
+                        // Require two consecutive OCR frames to reduce transient misreads.
+                        if (pendingCount >= 2 && candidate != lastValue) {
                             lastValue = candidate
                             sendBroadcast(Intent(ACTION_MULTIPLIER).setPackage(packageName).putExtra(EXTRA_MULTIPLIER, value))
                         }
+                    } else {
+                        pendingValue = ""
+                        pendingCount = 0
                     }
                 }
                 .addOnCompleteListener { bitmap.recycle(); busy.set(false) }
